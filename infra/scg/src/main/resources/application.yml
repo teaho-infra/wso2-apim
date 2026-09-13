@@ -1,0 +1,29 @@
+server:
+  port: 9080
+
+spring:
+  application:
+    name: scg-managed-gateway
+  cloud:
+    gateway:
+      server:
+        webflux:
+          # 不做服务发现,路由 uri 由 adapter 下发(直连 http)
+          default-filters: []
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: gateway,health,info
+      base-path: /actuator
+  endpoint:
+    gateway:
+      # SCG 4.2+:unrestricted 才允许 POST/DELETE 写路由
+      access: unrestricted
+    health:
+      show-details: always
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO

@@ -1,0 +1,39 @@
+# adapter 配置示例。复制为 config.local.yaml(已 gitignore)后改密码。
+wso2:
+  base_url: "https://127.0.0.1:9443"
+  # DCR 注册得到的 client(首次运行自动注册并回写到本地缓存文件)
+  client_id: ""
+  client_secret: ""
+  # 用于 DCR + password grant 的管理员
+  username: "admin"
+  password: "admin"
+  # 同步范围:只纳管已 PUBLISHED 的 API
+  lifecycle_status: "PUBLISHED"
+  verify_tls: false
+  # 上游声明的默认值(WSO2 API endpointConfig 解析失败时兜底)
+  default_upstream:
+    host: "downstream"
+    port: 9081
+    protocol: "http"
+
+scg:
+  enabled: true
+  actuator_url: "http://127.0.0.1:9080/actuator/gateway"
+  # adapter 管理的路由 id 前缀,避免误删人工/静态路由
+  route_prefix: "wso2-"
+
+higress:
+  enabled: true
+  # 通道: kubectl | dockercp | console(自动按可用性探测,也可强制)
+  channel: "auto"
+  namespace: "higress-system"
+  ingress_class: "higress"
+  docker_container: "higress"
+  data_dir: "/data"
+  kubeconfig: "/tmp/higress-kubeconfig"
+  # 独立 Higress 容器访问宿主 downstream 用的网桥 IP(运行时自动探测 docker0)
+  host_bridge_ip: ""
+  upstream_port: 9081
+
+state_file: "./evidence/state.json"
+poll_interval_seconds: 10

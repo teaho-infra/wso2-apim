@@ -1,0 +1,22 @@
+# SCG 4.2 + downstream 演示上游(WSO2 adapter 纳管的两个数据面组件之一:SCG)
+services:
+  downstream:
+    build: ./downstream
+    image: teaho/downstream:1.0.0
+    container_name: wso2-demo-downstream
+    ports:
+      - "9081:9081"   # 映射宿主,Higress 独立容器经宿主网桥 IP 访问
+    networks: [gwnet]
+
+  scg:
+    build: ./scg
+    image: teaho/scg-gateway:1.0.0
+    container_name: wso2-demo-scg
+    ports:
+      - "9080:9080"   # 业务 + actuator
+    depends_on: [downstream]
+    networks: [gwnet]
+
+networks:
+  gwnet:
+    name: wso2-gw-net

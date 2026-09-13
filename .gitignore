@@ -4,20 +4,29 @@ target/
 *.jar
 *.war
 
-# wso2 runtime (大文件,不入 git)
+# wso2 runtime/source (大文件,不入 git)
 infra/wso2-apim/runtime/
 infra/wso2-apim/source/
+infra/wso2-apim/product-apim-*/
+*.tar.gz
 *.zip
 
 # node/python
 node_modules/
 __pycache__/
 .venv/
+venv/
+*.pyc
 
-# secrets / logs
-*.log
-.env.local
+# adapter secrets/local state
+adapter/config.local.yaml
+adapter/.wso2-cache.json
+**/.wso2-cache.json
+evidence/state.json
 evidence/tmp/
+
+# logs
+*.log
 
 # os
 .DS_Store
