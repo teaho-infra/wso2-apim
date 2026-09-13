@@ -100,7 +100,7 @@ class Wso2Client:
         r = httpx.get(
             f"{self.base}/api/am/publisher/v4/apis",
             headers=self._auth(),
-            params={"limit": 100, "query": f"lifecycleStatus:{self.status}"},
+            params={"limit": 100, "query": f"status:{self.status}"},
             verify=self.verify, timeout=30,
         )
         if r.status_code == 401:
@@ -108,11 +108,14 @@ class Wso2Client:
             r = httpx.get(
                 f"{self.base}/api/am/publisher/v4/apis",
                 headers=self._auth(),
-                params={"limit": 100, "query": f"lifecycleStatus:{self.status}"},
+                params={"limit": 100, "query": f"status:{self.status}"},
                 verify=self.verify, timeout=30,
             )
         r.raise_for_status()
-        return r.json().get("list", [])
+        items = r.json().get("list", [])
+        # 客户端侧精确复核:搜索索引在生命周期刚变更后可能有秒级延迟,
+        # 以 DTO 实时字段 lifeCycleStatus 为准。
+        return [a for a in items if a.get("lifeCycleStatus") == self.status]
 
     def get_api_detail(self, api_id: str) -> dict:
         r = httpx.get(

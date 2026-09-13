@@ -11,19 +11,19 @@ ADMIN_PASS="${WSO2_PASS:-admin}"
 CACHE="${CACHE:-/tmp/wso2-dcr.json}"
 CURL="curl -sk --max-time 20"
 
-echo "▶️  WSO2 base = $BASE"
+log() { echo "$@" >&2; }
+log "▶️  WSO2 base = $BASE"
 
 # 1) DCR(复用缓存)
 if [ -f "$CACHE" ]; then
   CID=$(python3 -c "import json;print(json.load(open('$CACHE'))['clientId'])")
   CSEC=$(python3 -c "import json;print(json.load(open('$CACHE'))['clientSecret'])")
-  echo "• 复用 DCR client: $CID"
+  log "• 复用 DCR client: $CID"
 else
-  echo "• 注册 DCR client ..."
+  log "• 注册 DCR client ..."
   RESP=$($CURL -X POST "$BASE/client-registration/v0.17/register" \
     -u "$ADMIN_USER:$ADMIN_PASS" -H 'Content-Type: application/json' \
     -d '{"clientName":"wso2-adapter-cli","owner":"'$ADMIN_USER'","grantType":"password refresh_token","saasApp":true}')
-  echo "$RESP" > "$CACHE.raw"
   CID=$(echo "$RESP" | python3 -c "import json,sys;print(json.load(sys.stdin)['clientId'])")
   CSEC=$(echo "$RESP" | python3 -c "import json,sys;print(json.load(sys.stdin)['clientSecret'])")
   echo "{\"clientId\":\"$CID\",\"clientSecret\":\"$CSEC\"}" > "$CACHE"
@@ -34,12 +34,12 @@ TOKEN=$($CURL -X POST "$BASE/oauth2/token" \
   -u "$CID:$CSEC" -H 'Content-Type: application/x-www-form-urlencoded' \
   -d "grant_type=password&username=$ADMIN_USER&password=$ADMIN_PASS&scope=apim:api_view apim:api_create apim:api_publish" \
   | python3 -c "import json,sys;print(json.load(sys.stdin)['access_token'])")
-echo "• token 获取成功 (${#TOKEN} chars)"
+log "• token 获取成功 (${#TOKEN} chars)"
 AUTH="Authorization: Bearer $TOKEN"
 
-create_api() {
+# 创建(若重名则查出现有 id),echo 只输出 id
+ensure_api() {
   local name="$1" context="$2"
-  echo "• 创建 API: $name ($context)"
   local body
   body=$(python3 - "$name" "$context" <<'PY'
 import json,sys
@@ -56,35 +56,42 @@ print(json.dumps({
   "operations": [
     {"target":"/","verb":"GET","throttlingPolicy":"Unlimited","authType":"None"},
   ],
-  "endpointConfig": json.dumps({
-    "endpoint_type":"http",
-    "sandbox_endpoints":{"sandbox_default":"http://downstream:9081"},
-    "production_endpoints":{"sandbox_default":"http://downstream:9081"}
-  }),
+  # Publisher v4: endpointConfig 必须是 JSON 对象(不是字符串),否则 ClassCastException
+  "endpointConfig": {
+    "endpoint_type": "http",
+    "sandbox_endpoints": {"url": "http://downstream:9081"},
+    "production_endpoints": {"url": "http://downstream:9081"}
+  },
 }))
 PY
 )
-  $CURL -X POST "$BASE/api/am/publisher/v4/apis" -H "$AUTH" \
-    -H 'Content-Type: application/json' -d "$body"
+  log "• 创建 API: $name ($context)"
+  local resp id
+  resp=$($CURL -X POST "$BASE/api/am/publisher/v4/apis" -H "$AUTH" \
+    -H 'Content-Type: application/json' -d "$body")
+  id=$(echo "$resp" | python3 -c "import json,sys;d=json.load(sys.stdin);print(d.get('id',''))" 2>/dev/null || echo "")
+  if [ -z "$id" ]; then
+    log "  已存在或失败,按 name 查询。响应: $(echo "$resp" | head -c 160)"
+    id=$($CURL "$BASE/api/am/publisher/v4/apis?limit=100" -H "$AUTH" \
+      | NAME="$name" python3 -c "import json,os,sys;d=json.load(sys.stdin);n=os.environ['NAME'];print(next((a['id'] for a in d.get('list',[]) if a['name']==n),''))" 2>/dev/null || echo "")
+  fi
+  echo "$id"
 }
 
-# 3) 建 2 个 API(若已存在会返回 409,不致命)
-create_api "DemoEchoAPI" "/demo/echo" >/tmp/api-echo.json; echo
-create_api "DemoTimeAPI" "/demo/time" >/tmp/api-time.json; echo
+publish() {
+  local id="$1"
+  local status
+  status=$($CURL -o /dev/null -w '%{http_code}' -X POST \
+    "$BASE/api/am/publisher/v4/apis/change-lifecycle?action=Publish&apiId=$id" -H "$AUTH")
+  log "  Publish $id -> HTTP $status"
+}
 
-# 4) Publish
-for f in /tmp/api-echo.json /tmp/api-time.json; do
-  ID=$(python3 -c "import json;print(json.load(open('$f')).get('id',''))" 2>/dev/null || echo "")
-  if [ -n "$ID" ]; then
-    echo "• Publish $ID"
-    $CURL -X POST "$BASE/api/am/publisher/v4/apis/change-lifecycle?action=Publish&apiId=$ID" \
-      -H "$AUTH" -o /dev/null -w "  lifecycle: %{http_code}\n"
-  else
-    echo "⚠️  $f 无 id(可能已存在或建失败),内容: $(head -c200 $f)"
-  fi
-done
+ECHO_ID=$(ensure_api DemoEchoAPI /demo/echo)
+TIME_ID=$(ensure_api DemoTimeAPI /demo/time)
+log "echo id=$ECHO_ID ; time id=$TIME_ID"
+[ -n "$ECHO_ID" ] && publish "$ECHO_ID"
+[ -n "$TIME_ID" ] && publish "$TIME_ID"
 
-# 5) 列出 PUBLISHED
-echo "• 当前 PUBLISHED API:"
+log "• 当前 API:"
 $CURL "$BASE/api/am/publisher/v4/apis?limit=20" -H "$AUTH" \
-  | python3 -c "import json,sys;d=json.load(sys.stdin);[print('  -',a['name'],a.get('context'),a.get('lifeCycleStatus')) for a in d.get('list',[])]"
+  | python3 -c "import json,sys;d=json.load(sys.stdin);[print('  -',a['name'],a.get('context'),a.get('version'),a.get('lifeCycleStatus')) for a in d.get('list',[])]" >&2

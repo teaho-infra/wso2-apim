@@ -109,6 +109,10 @@ class HigressSink:
 
         # 2) 下发期望路由 + 共享 upstream
         if desired:
+            # 清空本地 tmp,避免 docker cp(merge 语义)把历史 wso2-*.yaml 又拷回容器
+            for sub in ("ingresses", "services", "endpoints"):
+                for old in (tmp / sub).glob("wso2-*.yaml"):
+                    old.unlink()
             (tmp / "services" / f"{self.upstream_name}.yaml").write_text(
                 yaml.safe_dump(self._service(), sort_keys=False))
             (tmp / "endpoints" / f"{self.upstream_name}.yaml").write_text(

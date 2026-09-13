@@ -1,0 +1,16 @@
+{
+  "phase_A_unpublished_sync": "synced 0 routes\n  [scg] {'created': [], 'updated': [], 'deleted': ['wso2-demo-echo', 'wso2-demo-time'], 'unchanged': []}\n  [higress] {'applied': [], 'deleted': ['wso2-demo-echo.yaml', 'wso2-demo-time.yaml'], 'host_ip': '172.17.0.1'}",
+  "phase_A_gateway_codes": {
+    "SCG/demo/echo": "404",
+    "HIG/demo/echo": "404",
+    "SCG/demo/time": "404",
+    "HIG/demo/time": "404"
+  },
+  "phase_B_republished_sync": "synced 2 routes\n  [scg] {'created': ['wso2-demo-echo', 'wso2-demo-time'], 'updated': [], 'deleted': [], 'unchanged': []}\n  [higress] {'applied': ['wso2-demo-echo', 'wso2-demo-time'], 'deleted': [], 'host_ip': '172.17.0.1'}",
+  "phase_B_gateway_codes": {
+    "SCG/demo/echo": "200",
+    "HIG/demo/echo": "200",
+    "SCG/demo/time": "200",
+    "HIG/demo/time": "200"
+  }
+}
