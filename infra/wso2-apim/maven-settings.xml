@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w33.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
+
+  <!--
+    scg-wso2-management 专用 Maven settings。
+    关键：
+    1. mirrorOf 只写 central（不是 *），WSO2 私有构件仍直连 maven.wso2.org，
+       阿里云镜像没有 carbon/apimgt 构件，用 * 会导致构建失败。
+    2. proxy 走本机 mihomo(7890)；mihomo 对国内域名会直连，所以阿里云也不受影响。
+    3. 构建时用 -s 指定本文件，不污染全局 ~/.m2/settings.xml。
+  -->
+
+  <proxies>
+    <proxy>
+      <id>mihomo-http</id>
+      <active>true</active>
+      <protocol>http</protocol>
+      <host>127.0.0.1</host>
+      <port>7890</port>
+      <nonProxyHosts>localhost|127.0.0.1|*.aliyun.com|maven.aliyun.com</nonProxyHosts>
+    </proxy>
+    <proxy>
+      <id>mihomo-https</id>
+      <active>true</active>
+      <protocol>https</protocol>
+      <host>127.0.0.1</host>
+      <port>7890</port>
+      <nonProxyHosts>localhost|127.0.0.1|*.aliyun.com|maven.aliyun.com</nonProxyHosts>
+    </proxy>
+  </proxies>
+
+  <mirrors>
+    <mirror>
+      <id>aliyun-central</id>
+      <name>Aliyun Public Mirror (central only)</name>
+      <url>https://maven.aliyun.com/repository/public</url>
+      <mirrorOf>central</mirrorOf>
+    </mirror>
+  </mirrors>
+
+  <profiles>
+    <profile>
+      <id>wso2-repos</id>
+      <repositories>
+        <repository>
+          <id>wso2-releases</id>
+          <url>https://maven.wso2.org/nexus/content/repositories/releases/</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>false</enabled></snapshots>
+        </repository>
+        <repository>
+          <id>wso2-snapshots</id>
+          <url>https://maven.wso2.org/nexus/content/repositories/snapshots/</url>
+          <releases><enabled>false</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+        <repository>
+          <id>wso2-thirdparty</id>
+          <url>https://maven.wso2.org/nexus/content/repositories/thirdparty/</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>wso2-plugins</id>
+          <url>https://maven.wso2.org/nexus/content/repositories/releases/</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </pluginRepository>
+        <pluginRepository>
+          <id>central-plugins</id>
+          <url>https://maven.aliyun.com/repository/public</url>
+          <releases><enabled>true</enabled></releases>
+          <snapshots><enabled>true</enabled></snapshots>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
+
+  <activeProfiles>
+    <activeProfile>wso2-repos</activeProfile>
+  </activeProfiles>
+
+</settings>

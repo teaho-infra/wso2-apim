@@ -1,0 +1,23 @@
+# build
+target/
+*.class
+*.jar
+*.war
+
+# wso2 runtime (大文件,不入 git)
+infra/wso2-apim/runtime/
+infra/wso2-apim/source/
+*.zip
+
+# node/python
+node_modules/
+__pycache__/
+.venv/
+
+# secrets / logs
+*.log
+.env.local
+evidence/tmp/
+
+# os
+.DS_Store
