@@ -1,0 +1,17 @@
+SCG 4.3 actuator hot-write verification
+GET /demo/echo via SCG -> HTTP 200
+body:
+{
+  "service": "downstream",
+  "method": "GET",
+  "path": "/demo/echo",
+  "query_echo": "received",
+  "headers": {
+    "User-Agent": "curl/8.5.0",
+    "Accept": "*/*",
+    "host": "downstream:9081",
+    "content-length": "0"
+  }
+}
+
+after DELETE+refresh -> HTTP 404 (expect 404)

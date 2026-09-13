@@ -1,4 +1,5 @@
 # SCG 4.2 + downstream 演示上游(WSO2 adapter 纳管的两个数据面组件之一:SCG)
+name: wso2gw
 services:
   downstream:
     build: ./downstream
@@ -20,3 +21,4 @@ services:
 networks:
   gwnet:
     name: wso2-gw-net
+    external: true   # 由首次 compose 创建;跨 project 复用,Higress 经宿主 IP 接入
