@@ -27,10 +27,23 @@ echo "CARBON_HOME=$CARBON_HOME"
 
 # 端口偏移:9443→9543, 9763→9863, 8243→8343 ...
 TOML="$CARBON_HOME/repository/conf/deployment.toml"
-if ! grep -q '^[server]' "$TOML" 2>/dev/null; then
-  printf '\n[server]\noffset = %s\n' "$OFFSET" >> "$TOML"
-  echo "🔧 已写入 [server] offset=$OFFSET"
-fi
+python3 - "$TOML" "$OFFSET" <<'PY'
+import sys, re
+path, offset = sys.argv[1], sys.argv[2]
+lines = open(path).read().splitlines()
+if any(re.match(r'^offset\s*=', l) for l in lines):
+    print("ℹ️  offset 已存在,跳过")
+else:
+    out, done = [], False
+    for l in lines:
+        out.append(l)
+        if not done and l.strip() == "[server]":
+            out.append(f"offset = {offset}"); done = True
+    if not done:
+        out = [f"[server]", f"offset = {offset}", ""] + lines
+    open(path, "w").write("\n".join(out) + "\n")
+    print(f"🔧 已在 [server] 写入 offset = {offset}")
+PY
 
 HTTPS_PORT=$((9443 + OFFSET))
 echo "▶️  启动 APIM(console),管理口 https://127.0.0.1:${HTTPS_PORT}/carbon"
