@@ -25,6 +25,16 @@ WSO2 门户用的是绝对根路径（`/carbon`、`/publisher`、`/api/am/*`、`
 反代（见 `wso2-locations.conf`），`/wso2` 仅作跳转入口。
 `/api/am/`、`/api/identity/` 精确切给 WSO2，其余 `/api/` 仍归同机 multica。
 
+**务必同时转发登录流程的根级 servlet**：`/logincontext`、`/commonauth` 不在任何
+webapp 前缀下，漏配会落到 catch-all 返回 404，典型症状是登录轮询
+`/logincontext?sessionDataKey=...&application=apim_publisher` 一直 404、前端卡住。
+其它根级/前缀：`/oauth2/`、`/oidc/`、`/authenticationendpoint/`、
+`/accountrecoveryendpoint/`、`/client-registration/`、`/internal/`、`/services/`、
+`/registry/`、`/keymanager-operations/`。排障方法：tail nginx access.log，
+对所有 4xx/5xx 按 `$9 $7` 去重，缺什么前缀补什么。
+
+> WSO2 4.7 未打包中文 `locales/zh.json`（源站本身 404），门户回退英文，不影响登录。
+
 ## 关键：localhost 写死地址的改写
 
 Publisher/DevPortal 是 React SPA，运行配置 `settings.js` 与
