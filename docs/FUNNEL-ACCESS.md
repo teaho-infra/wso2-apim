@@ -3,20 +3,19 @@
 把本机源码版 WSO2 APIM 4.7（`:9543`）通过用户级 nginx（`:8443`）挂到 Tailscale
 Funnel 公网 443，供浏览器访问 Carbon / Publisher / DevPortal。
 
-## 链路与双层认证
+## 链路与认证
 
 ```
 浏览器 → https://<tailnet-host>/  (Tailscale Funnel TLS 终止, 443)
        → 本机 tailscaled → 127.0.0.1:8443 (用户级 nginx)
-            第 1 层:HTTP Basic(htpasswd-wso2,独立强口令)
        → proxy_pass https://127.0.0.1:9543 (WSO2,自签,proxy_ssl_verify off)
-            第 2 层:WSO2 自身登录(admin / 强口令,已改)
+            登录:WSO2 自身(admin / 强口令)
 ```
 
-- Funnel 域名：`https://leonbook5-jiguang-series.tailb1426a.ts.net`
-- 入口：`/wso2`(→Publisher)、`/publisher/`、`/devportal/`、`/carbon/`
-- 两道口令**分别保存、互不同**；外层 Basic 头在回源时用 `map` 剥掉 `Basic`、
-  保留 SPA 的 `Bearer`，避免把外层凭据误当 WSO2 凭据。
+> 2026-09-14：外层 HTTP Basic **已按要求关闭**（`wso2-proxy.inc` 中 `auth_basic off`），
+> 公网仅保留 WSO2 自身登录这一道；恢复方式见该文件注释，`htpasswd-wso2` 仍保留。
+> multica 的 Basic 在 server 块另配，不受影响（WSO2 location 必须显式 `auth_basic off`，
+> 否则会继承 server 块的 multica Basic）。
 
 ## 为什么不能简单挂 `/wso2` 子前缀
 
@@ -57,8 +56,8 @@ Publisher/DevPortal 是 React SPA，运行配置 `settings.js` 与
 - `~/.local/nginx/conf/nginx.conf`：server 段 include `wso2-locations.conf`；
   http 段的 `map $http_authorization $wso2_upstream_auth`
 - `~/.local/nginx/conf/wso2-locations.conf`：WSO2 各 webapp 前缀
-- `~/.local/nginx/conf/wso2-proxy.inc`：回源 + Basic + sub_filter/proxy_redirect
-- `~/.local/nginx/conf/htpasswd-wso2`（600）：外层 Basic
+- `~/.local/nginx/conf/wso2-proxy.inc`：回源 + auth_basic off + sub_filter/proxy_redirect
+- `~/.local/nginx/conf/htpasswd-wso2`（600）：外层 Basic 口令文件（当前已停用，保留备用）
 - 口令明文暂存（600）：`~/.local/nginx/conf/.wso2-funnel-password`（外层）、
   `.wso2-admin-password`（WSO2 admin）——不要提交、分享后可删。
 
@@ -86,12 +85,13 @@ java -cp "lib/*:repository/components/plugins/*:bin/org.wso2.carbon.bootstrap-4.
 
 | 检查 | 期望 |
 |---|---|
-| 公网无凭证访问 `/publisher/` | 401 |
-| 外层 Basic 后三控制台 | 200 |
-| Carbon `login_action.jsp` 正确/错误口令 | `loginStatus=true` / `=false` |
+| 公网直接访问 `/publisher/`、`/devportal/`、Carbon 登录页 | 200（无 Basic 弹窗） |
+| WSO2 未登录调 `/api/am/publisher/v4/apis` | 401 JSON（WSO2 自身鉴权） |
+| WSO2 `login_action.jsp` 正确/错误口令 | `loginStatus=true` / `=false` |
 | 公网 OIDC discovery / settings.js | 主机名全部为公网域名，无 localhost |
 | `/oidc/checksession`、SPA bundle | 200 |
-| `/health`、multica `/api/*` | 不受影响 |
+| `/health`、multica `/multica/`、`/api/*` | 不受影响（multica 仍保留自己的 Basic） |
 
-> 公网暴露面：Funnel 已能被互联网扫描器探测到。双层认证中任一弱口令即失守；
-> 生产请加强密码、限制来源（Tailscale Serve 仅 tailnet，或 IP allowlist）并启用审计。
+> 公网暴露面：关闭外层 Basic 后，WSO2 admin 强密码是唯一登录屏障；Funnel 对全网开放。
+> 建议保持强密码并关注 WSO2 补丁；如需再收紧，可恢复 Basic、改 Tailscale Serve（仅 Tailnet）
+> 或加 IP 白名单。
