@@ -30,3 +30,7 @@ evidence/tmp/
 
 # os
 .DS_Store
+
+# IDE
+.idea/
+*.iml
