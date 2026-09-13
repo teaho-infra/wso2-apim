@@ -1,6 +1,7 @@
 # adapter 配置示例。复制为 config.local.yaml(已 gitignore)后改密码。
 wso2:
-  base_url: "https://127.0.0.1:9443"
+  # 源码构建产物用 offset=100 → 9543;官方镜像默认 9443
+  base_url: "https://127.0.0.1:9543"
   # DCR 注册得到的 client(首次运行自动注册并回写到本地缓存文件)
   client_id: ""
   client_secret: ""
