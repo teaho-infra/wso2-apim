@@ -14,8 +14,12 @@ Funnel 公网 443，供浏览器访问 Carbon / Publisher / DevPortal。
 
 > 2026-09-14：外层 HTTP Basic **已按要求关闭**（`wso2-proxy.inc` 中 `auth_basic off`），
 > 公网仅保留 WSO2 自身登录这一道；恢复方式见该文件注释，`htpasswd-wso2` 仍保留。
-> multica 的 Basic 在 server 块另配，不受影响（WSO2 location 必须显式 `auth_basic off`，
-> 否则会继承 server 块的 multica Basic）。
+> multica 原本在 server 块配置的 HTTP Basic 也已于 2026-09-14 一并关闭，当前整条
+> Funnel（multica + WSO2）均无 nginx 层认证。`htpasswd`/`htpasswd-wso2` 文件保留备用。
+>
+> ⚠️ 注意：nginx 的 `/api/` location 仍自动注入 multica PAT（`Authorization: Bearer mul_…`），
+> 因此去掉 Basic 后，任何能访问 Funnel 域名的人调用 `/api/*` 都会以 PAT 所属用户身份操作
+> multica。恢复认证或移除 PAT 注入的方法见 nginx.conf 注释。
 
 ## 为什么不能简单挂 `/wso2` 子前缀
 
